@@ -1,74 +1,78 @@
 package com.example.lms.controller;
 
-import com.example.lms.dto.AuthResponse;
-import com.example.lms.dto.LoginRequest;
 import com.example.lms.dto.RegisterRequest;
 import com.example.lms.entity.User;
-import com.example.lms.repository.UserRepository;
-import com.example.lms.security.JwtUtil;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.*;
-import org.springframework.security.authentication.*;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import com.example.lms.service.AuthService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.*;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/auth")
-@RequiredArgsConstructor
 public class AuthController {
 
-    private final AuthenticationManager authManager;
-    private final PasswordEncoder passwordEncoder;
-    private final UserRepository userRepository;
-    private final JwtUtil jwtUtil;
+    private final AuthService authService;
+
+    public AuthController(AuthService authService) {
+        this.authService = authService;
+    }
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest req) {
-        if (userRepository.findByUsername(req.getUsername()).isPresent()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(new AuthResponse("Username already exists!", null));
-        }
-
-        String role = (req.getRole() == null || req.getRole().isBlank())
-                ? "STUDENT"
-                : req.getRole().trim().toUpperCase();
-
-        User user = new User();
-        user.setUsername(req.getUsername());
-        user.setPassword(passwordEncoder.encode(req.getPassword()));
-        user.setRoles(Set.of(role)); // Store plain roles
-
-        userRepository.save(user);
-
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new AuthResponse("User registered successfully!", null));
+    public ResponseEntity<User> register(@RequestBody User user) {
+        User saved = authService.register(user);
+        return ResponseEntity.ok(saved);
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest req) {
-        try {
-            Authentication auth = authManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(req.getUsername(), req.getPassword())
-            );
-
-            // principal username
-            String username = auth.getName();
-
-            // convert authorities ROLE_X -> X to put plain roles in JWT
-            List<String> plainRoles = auth.getAuthorities().stream()
-                    .map(granted -> granted.getAuthority())     // ROLE_STUDENT
-                    .map(r -> r.startsWith("ROLE_") ? r.substring(5) : r) // STUDENT
-                    .toList();
-
-            String token = jwtUtil.generateToken(username, plainRoles);
-
-            return ResponseEntity.ok(new AuthResponse("Login successful!", token));
-        } catch (BadCredentialsException ex) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new AuthResponse("Invalid credentials!", null));
-        }
+    public ResponseEntity<String> login(@RequestBody User user) {
+        // ⚠️ In JWT setup, you usually authenticate with AuthenticationManager
+        // Here just return a dummy response for testing
+        return ResponseEntity.ok("Login successful (JWT generation goes here)");
     }
 }
+
+
+
+
+//package com.example.lms.controller;
+//
+//import com.example.lms.dto.RegisterRequest;
+//import com.example.lms.entity.User;
+//import com.example.lms.service.AuthService;
+//import org.springframework.http.ResponseEntity;
+//import org.springframework.web.bind.annotation.*;
+//
+//        import java.util.Set; // 💡 Don't forget to import java.util.Set!
+//
+//@RestController
+//@RequestMapping("/auth")
+//public class AuthController {
+//
+//    private final AuthService authService;
+//
+//    public AuthController(AuthService authService) {
+//        this.authService = authService;
+//    }
+//
+//    @PostMapping("/register")
+//    public ResponseEntity<User> register(@RequestBody RegisterRequest registerRequest) {
+//        // Create a User entity from the DTO
+//        User user = new User();
+//        user.setUsername(registerRequest.getUsername());
+//        user.setPassword(registerRequest.getPassword());
+//
+//        // ✅ Correct way to set the roles:
+//        // Create a Set containing the single role from the request
+//        user.setRoles(Set.of(registerRequest.getRole()));
+//
+//        // Now, you can pass the correctly populated User entity to your service
+//        User saved = authService.register(user);
+//        return ResponseEntity.ok(saved);
+//    }
+//
+//    @PostMapping("/login")
+//    public ResponseEntity<String> login(@RequestBody User user) {
+//        return ResponseEntity.ok("Login successful (JWT generation goes here)");
+//    }
+//}

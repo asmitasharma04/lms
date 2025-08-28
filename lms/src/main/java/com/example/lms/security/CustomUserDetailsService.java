@@ -24,12 +24,10 @@ public class CustomUserDetailsService implements UserDetailsService {
         User entityUser = userRepo.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
 
-        // Map plain roles -> ROLE_*
         Set<GrantedAuthority> authorities = entityUser.getRoles().stream()
                 .map(r -> new SimpleGrantedAuthority("ROLE_" + r))
                 .collect(Collectors.toSet());
 
-        // Use Spring Security's User (fully qualified to avoid name clash)
         return new org.springframework.security.core.userdetails.User(
                 entityUser.getUsername(),
                 entityUser.getPassword(),
